@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Relatório de otimização Docker — Comparativo Visual</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: #121831;
+      --text: #e6ecff;
+      --muted: #a9b3d6;
+      --accent1: #6ea8fe;
+      --accent2: #f7b267;
+      --accent3: #7ee081;
+      --accent4: #d08ef2;
+      --grid: #2a3254;
+      --chip: #1b2347;
+      --free: #5865f2;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji", sans-serif;
+      background: radial-gradient(1200px 800px at 20% -10%, #1a2250, transparent 60%),
+                  radial-gradient(1000px 700px at 100% 0%, #1b3b70, transparent 60%),
+                  var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+    }
+    header {
+      padding: 32px 20px 8px;
+      text-align: center;
+    }
+    header h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.4rem, 2.4vw, 2rem);
+      font-weight: 700;
+    }
+    header p {
+      margin: 0 auto;
+      max-width: 920px;
+      color: var(--muted);
+      font-size: 0.98rem;
+    }
+    .wrap {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 16px 20px 60px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 18px;
+    }
+    .panel {
+      background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.0));
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 16px;
+      backdrop-filter: blur(6px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+    }
+    .panel h2 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+      letter-spacing: 0.2px;
+    }
+    .caption, .note {
+      margin: 10px 0 0;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    .note strong { color: var(--text); }
+    .card {
+      background: var(--panel);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      padding: 14px;
+    }
+    .card h3 {
+      margin: 0 0 8px;
+      font-size: 1rem;
+    }
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: var(--chip);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin: 6px 6px 10px 0;
+      white-space: nowrap;
+    }
+    .card ul {
+      margin: 8px 0 0 18px;
+      padding: 0;
+      font-size: 0.95rem;
+    }
+    .legend {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin: 10px 0 0;
+    }
+    .legend .key {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+    .swatch {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border-radius: 3px;
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+    canvas {
+      width: 100% !important;
+      height: 360px !important;
+    }
+    footer {
+      max-width: 1100px;
+      margin: 22px auto 40px;
+      padding: 0 20px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    a { color: var(--accent1); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .tradeoff-list { list-style: none; padding: 0; margin: 0; }
+    .tradeoff-list li { padding: 10px 0; border-bottom: 1px solid var(--grid); }
+    .tradeoff-list li:last-child { border-bottom: none; }
+    .tradeoff-list strong { display: block; color: var(--text); margin-bottom: 4px; }
+    .tradeoff-list span { color: var(--muted); font-size: 0.9rem; }
+    .cost-label { font-weight: bold; }
+    .cost-high { color: var(--accent2); }
+    .cost-mid { color: var(--accent1); }
+    .cost-low { color: var(--accent3); }
+    .cost-zero { color: var(--free); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Relatório de otimização Docker — Comparativo Visual</h1>
+    <p>
+      Comparação de plataformas para execução de containers, incluindo soluções pagas e gratuitas. A análise foca no custo de licença anual para 80 containers e nos trade-offs de custo operacional.
+    </p>
+  </header>
+
+  <div class="wrap">
+    <section class="panel">
+      <h2>Resumo das Soluções</h2>
+      <div class="grid">
+        <div class="card">
+          <h3>Red Hat OpenShift</h3>
+          <span class="chip">Licenciamento: por vCPU/core</span>
+          <ul>
+            <li>Plataforma Kubernetes corporativa com segurança, gestão e suporte empresarial inclusos.</li>
+            <li>Custo de licença: ~USD 880–1.000/ano por vCPU.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>VMware Tanzu</h3>
+          <span class="chip">Licenciamento: por vCPU/core</span>
+          <ul>
+            <li>Suite Kubernetes com forte integração ao ecossistema VMware e automação.</li>
+            <li>Custo de licença: ~USD 995/ano por core.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Mirantis Kubernetes Engine</h3>
+          <span class="chip">Licenciamento: por nó</span>
+          <ul>
+            <li>Evolução do Docker Enterprise, com foco em segurança e gestão multi-cloud.</li>
+            <li>Custo de licença: ~USD 1.500–3.000/ano por nó.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Kubernetes (Open-Source)</h3>
+          <span class="chip" style="background-color: var(--free); color: white;">Licença: Gratuita</span>
+          <ul>
+            <li>Orquestrador padrão de mercado, altamente flexível e poderoso.</li>
+            <li>Exige alta maturidade técnica para configurar, gerenciar e manter (rede, storage, segurança, etc.).</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Docker CE + Swarm</h3>
+          <span class="chip" style="background-color: var(--free); color: white;">Licença: Gratuita</span>
+          <ul>
+            <li>Solução de runtime (Docker CE) e orquestração nativa (Swarm) mais simples.</li>
+            <li>Menos complexo que Kubernetes, mas também com menos funcionalidades avançadas e ecossistema menor.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <div class="grid" style="margin-top:18px;">
+      <section class="panel">
+        <h2>Comparativo de Custo de Licença Anual (80 containers)</h2>
+        <div class="legend">
+          <span class="key"><span class="swatch" style="background: var(--accent3)"></span> Mín</span>
+          <span class="key"><span class="swatch" style="background: var(--accent1)"></span> Exemplo</span>
+          <span class="key"><span class="swatch" style="background: var(--accent2)"></span> Máx</span>
+        </div>
+        <canvas id="annualCost"></canvas>
+        <p class="caption">
+          O gráfico compara o <strong>custo de licenciamento</strong>. As opções gratuitas têm custo de licença zero, mas implicam em custos operacionais (equipe, manutenção) significativos não mostrados aqui.
+        </p>
+      </section>
+
+      <section class="panel">
+        <h2>Análise de Trade-offs: Licença vs. Operação</h2>
+        <ul class="tradeoff-list">
+            <li>
+                <strong>OpenShift / Tanzu</strong>
+                <span>
+                    <span class="cost-label cost-high">Custo de Licença: Alto.</span>
+                    <span class="cost-label cost-low">Custo Operacional: Baixo.</span>
+                    Ideal para empresas que precisam de suporte, segurança e agilidade, sem uma grande equipe especialista em Kubernetes].
+                </span>
+            </li>
+            <li>
+                <strong>Mirantis K.E.</strong>
+                <span>
+                    <span class="cost-label cost-mid">Custo de Licença: Médio/Alto.</span>
+                    <span class="cost-label cost-low">Custo Operacional: Baixo/Médio.</span>
+                    Bom balanço para quem busca uma plataforma gerenciada com um modelo de custo por nó, potencialmente mais econômico em alguns cenários.
+                </span>
+            </li>
+            <li>
+                <strong>Kubernetes (OSS)</strong>
+                <span>
+                    <span class="cost-label cost-zero">Custo de Licença: Zero.</span>
+                    <span class="cost-label cost-high">Custo Operacional: Muito Alto.</span>
+                    Requer equipe sênior dedicada para montar e gerenciar todo o ecossistema. A economia na licença é transferida para o custo com pessoal especializado.
+                </span>
+            </li>
+             <li>
+                <strong>Docker CE + Swarm</strong>
+                <span>
+                    <span class="cost-label cost-zero">Custo de Licença: Zero.</span>
+                    <span class="cost-label cost-mid">Custo Operacional: Médio.</span>
+                    Mais simples de gerenciar que Kubernetes puro, mas com menos garantias e ecossistema. Adequado para cargas de trabalho mais simples ou equipes menores.
+                </span>
+            </li>
+        </ul>
+      </section>
+    </div>
+  </div>
+
+  <footer>
+    Observação: os números de custo são estimativas anuais em USD para as soluções pagas, com data de referência 05/08/2025, baseadas no documento fornecido. A análise das opções gratuitas considera o modelo de código aberto padrão.
+  </footer>
+
+  <script>
+    function loadAndInitCharts() {
+      if (typeof Chart === 'undefined') {
+        showError('A biblioteca de gráficos (Chart.js) não pôde ser carregada. Verifique a conexão com a internet ou bloqueadores de script.');
+        return;
+      }
+      
+      try {
+        initAnnualCostChart();
+      } catch (e) {
+        console.error('Falha ao inicializar o gráfico:', e);
+        showError(`Ocorreu um erro ao renderizar o gráfico: ${e.message}`);
+      }
+    }
+
+    function showError(message) {
+      const canvas = document.getElementById('annualCost');
+      if (canvas) {
+        const errorDiv = document.createElement('div');
+        errorDiv.textContent = message;
+        errorDiv.style.cssText = 'padding: 20px; text-align: center; border: 1px solid var(--accent2); background: rgba(247, 178, 103, 0.1); color: var(--muted); border-radius: 8px;';
+        canvas.replaceWith(errorDiv);
+      }
+    }
+
+    function initAnnualCostChart() {
+      const canvasCtx = document.getElementById('annualCost');
+      if (!canvasCtx) {
+        console.error('Elemento canvas #annualCost não encontrado.');
+        return;
+      }
+
+      const usd = (n) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(n);
+      const fmt = (n) => new Intl.NumberFormat('en-US').format(n);
+
+      const labels = ['Red Hat OpenShift', 'VMware Tanzu', 'Mirantis K.E.', 'Kubernetes (OSS)', 'Docker CE + Swarm'];
+      const minAnnual = [8000, 8000, 8000, 0, 0];
+      const exAnnual  = [10000, 9950, 8000, 0, 0];
+      const maxAnnual = [16000, 16000, 12000, 0, 0];
+
+      const styles = getComputedStyle(document.documentElement);
+      const cMin = styles.getPropertyValue('--accent3').trim();
+      const cEx  = styles.getPropertyValue('--accent1').trim();
+      const cMax = styles.getPropertyValue('--accent2').trim();
+      const grid = styles.getPropertyValue('--grid').trim();
+      const text = styles.getPropertyValue('--text').trim();
+      const muted = styles.getPropertyValue('--muted').trim();
+
+      Chart.defaults.color = muted;
+      Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+
+      new Chart(canvasCtx, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            { label: 'Mín', data: minAnnual, backgroundColor: cMin, borderRadius: 6 },
+            { label: 'Exemplo', data: exAnnual, backgroundColor: cEx, borderRadius: 6 },
+            { label: 'Máx', data: maxAnnual, backgroundColor: cMax, borderRadius: 6 }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { grid: { color: grid }, ticks: { color: text } },
+            y: {
+              beginAtZero: true,
+              grid: { color: grid },
+              ticks: { color: text, callback: (value) => ' + fmt(value) }
+            }
+          },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: (ctx) => `${ctx.dataset.label}: ${usd(ctx.parsed.y)}`
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // Espera o DOM carregar completamente antes de tentar rodar o script
+    window.addEventListener('DOMContentLoaded', loadAndInitCharts);
+  </script>
+</body>
+</html>
